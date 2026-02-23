@@ -1,0 +1,314 @@
+---
+title: "Ocean Plastic Pollution Analysis"
+author: "Matteo Pietrucci"
+date: "2026-02-23"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    theme: readable
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	fig.align = "center",
+	fig.height = 6,
+	fig.width = 10,
+	message = FALSE,
+	warning = FALSE,
+	dpi = 300
+)
+library(tidyverse)
+
+oceanicpp_df <- read_csv("data/Oceanic_Plastic_Pollution_Db.csv")
+oceanicpp_df <- oceanicpp_df %>% rename(Plastic_Type = Platic_Type)
+```
+
+# Introduction
+
+This project explores ocean plastic pollution using the *Oceanic Plastic Pollution* dataset (15,000 observations). 
+I analyze: 
+1) how plastic weight varies across oceans, 
+2) how plastic types are distributed within each ocean, 
+3) whether depth relates to plastic weight and type.
+
+## Scenario & Objectives
+
+Plastic pollution has become one of the most significant environmental challenges affecting marine ecosystems worldwide. Understanding how plastic waste is distributed across oceans and depths is essential for evaluating its environmental impact.
+
+This study analyzes the *Ocean Plastic Pollution* dataset to:
+- Examine the distribution of plastic weight across major oceans,
+- Investigate the composition of plastic types within each ocean,
+- Explore potential relationships between depth and plastic weight.
+
+# Dataset Overview
+
+The *Global Ocean Plastic Pollution* dataset combines geolocated observations of plastic waste collected from field monitoring and remote sensing-based sources, as described in its official documentation on Kaggle (Wankhede, 2024).
+
+**Source:**  
+Ocean Plastic Pollution Dataset — Kaggle  
+https://www.kaggle.com/datasets/aniruddhawankhede/oceanplasticpollution
+
+Each record includes:
+- Geographic information (latitude, longitude, and ocean region),
+- Plastic type classification,
+- Plastic weight (in kilograms),
+- Depth of observation (in meters),
+- Temporal information (year, month, and day).
+
+These variables enable the analysis of spatial distribution across ocean regions, comparison of plastic type composition, and exploration of vertical distribution patterns related to depth. The dataset provides a structured foundation for statistical analysis and data visualization of marine plastic pollution.
+
+## Variables Description
+
+The key variables used in this analysis include:
+
+- **Region**: Ocean region where the plastic was observed (categorical).
+- **Plastic_Type**: Classification of plastic material (categorical).
+- **Plastic_Weight_kg**: Weight of the detected plastic waste in kilograms (numeric).
+- **Depth_meters**: Depth at which the plastic was observed (numeric).
+- **Latitude and Longitude**: Geographic coordinates of the observation.
+- **Year, Month, Day**: Temporal information related to the observation.
+
+# Methodology
+
+## Data Preparation
+
+Prior to the R-based analysis, an initial data quality check was performed using spreadsheet tools. The dataset was inspected for formatting inconsistencies, typographical errors, and missing values.
+Two fully empty rows were removed, and date variables were standardized to ensure consistent formatting. No typographical inconsistencies were detected in categorical variables.
+The dataset was imported into R using the tidyverse package. 
+A minor data cleaning step was performed to correct a column naming inconsistency ("Platic_Type" was renamed to "Plastic_Type") to ensure consistency and prevent errors during analysis.
+
+No additional filtering or transformation was required, as the dataset contained complete and structured observations suitable for aggregation and visualization.
+
+## Aggregation and Derived Metrics
+
+To generate meaningful insights, several derived metrics were calculated:
+
+- Observation counts per ocean region
+- Total plastic weight per region
+- Average plastic weight per observation
+- Total plastic weight per plastic type within each region
+- Percentage distribution of plastic types within each region
+
+Aggregations were performed using group_by() and summarise(), while percentage distributions were calculated within each region to ensure comparability across ocean areas.
+
+## Visualization Approach
+
+Bar charts were used to compare categorical distributions (regions and plastic types), while stacked bar charts were applied to illustrate compositional differences.
+
+A scatterplot with faceting by region was used to explore the potential relationship between depth and plastic weight. Transparency and small point sizes were applied to reduce overplotting and improve readability.
+
+All visualizations were created using ggplot2 with consistent styling and color palettes to enhance interpretability.
+
+# Insight 1 — Plastic Weight by Ocean
+
+## Observation Counts
+
+To assess whether comparisons across oceans are reliable, observation counts were calculated for each region.
+
+```{r observation-counts}
+observation <- oceanicpp_df %>% 
+  count(Region)
+
+observation
+
+ggplot(data = observation, mapping = aes(x = Region,y = n, fill = Region)) +
+  geom_col() +
+  geom_text(aes(label = n), vjust = -0.5, fontface = "bold") +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Plastic Pollution Observations by Region",
+       x = "Ocean Region",
+       y = "Observation Counts"
+  ) + 
+  theme_minimal(base_size = 14) + 
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5), 
+    axis.title = element_text(face = "bold"), 
+    axis.text = element_text(face = "bold"), 
+    legend.position = "none",
+    panel.background = element_rect(fill = "white", color = NA), 
+    plot.background = element_rect(fill = "white", color = NA))
+```
+
+The number of observations is relatively balanced across the five ocean regions, allowing meaningful comparison of total and average plastic weights.
+
+## Total Plastic Weight
+
+Calculation of total plastic waste across the five ocean regions.
+
+```{r total plastic weight}
+total_kg <- oceanicpp_df %>%
+  group_by(Region) %>% 
+  summarise(Total_kg = sum(Plastic_Weight_kg, na.rm = TRUE))
+  
+  total_kg
+  
+  ggplot(data = total_kg, mapping = aes(x = Region,y = Total_kg/1000, fill = Region)) +
+  geom_col() +
+  geom_text(aes(label = round(Total_kg/1000, 1)), 
+            vjust = -0.5, fontface = "bold") + 
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "Plastic Distribution by Ocean Region", 
+    x = "Ocean Region", 
+    y = "Total Plastic Weight (ton)"
+  ) +
+  theme_minimal(base_size = 14) + 
+  theme( plot.title = element_text(face = "bold", size = 16, hjust = 0.5), 
+         axis.title = element_text(face = "bold"), 
+         axis.text = element_text(face = "bold"), 
+         legend.position = "none", 
+         panel.background = element_rect(fill = "white", color = NA), 
+         plot.background = element_rect(fill = "white", color = NA) )
+```
+
+Total plastic weight does not show strong disparities between ocean regions, indicating a relatively even distribution in the recorded observations.
+
+## Mean Plastic Weight per Observation
+
+Although total values provide a general overview, average plastic weight per observation offers a more precise comparison across regions by controlling for the number of recorded samples.
+
+```{r mean plastic weight per observation}
+
+media_df <- total_kg %>% 
+  inner_join(observation, by = "Region") %>% 
+  mutate(media = Total_kg / n)
+  
+  media_df
+  
+  ggplot(data = media_df, mapping = aes(x = Region, y = media,fill = Region)) +
+  geom_col() +
+  geom_text(aes(label = round(media, 1)), 
+            vjust = -0.5, fontface = "bold") + 
+  scale_fill_brewer(palette = "Set2") +
+  labs( title = "Average Plastic Weight per Observation by Ocean Region", 
+        x = "Ocean Region", 
+        y = "Average Plastic Weight (kg)" ) + 
+  theme_minimal(base_size = 14) + 
+  theme( plot.title = element_text(face = "bold", size = 16, hjust = 0.5), 
+         axis.title = element_text(face = "bold"), 
+         axis.text = element_text(face = "bold"), 
+         legend.position = "none", 
+         panel.background = element_rect(fill = "white", color = NA), 
+         plot.background = element_rect(fill = "white", color = NA))
+```
+
+The average values indicate a relatively homogeneous distribution across ocean regions, with only a 6.3 kg difference between the maximum and minimum mean plastic weights.
+
+# Insight 2 — Plastic Type Composition Across Oceans
+
+Plastic types were aggregated by region, and their percentage distribution was calculated within each ocean.
+
+```{r plastic type distribution by ocean}
+
+plastic_type_total_kg_ton_pct <- oceanicpp_df %>%
+  group_by(Region, Plastic_Type) %>% 
+  summarise(Type_Total_kg = sum(Plastic_Weight_kg, na.rm = TRUE), .groups = "drop") %>% 
+  mutate(Type_Total_ton = Type_Total_kg / 1000) %>% 
+  group_by(Region) %>% 
+  mutate(pct = Type_Total_ton / sum(Type_Total_ton)) %>% 
+  ungroup()
+  
+  plastic_type_total_kg_ton_pct
+  
+  ggplot(plastic_type_total_kg_ton_pct, 
+       aes(x = Region, y = Type_Total_ton, fill = Plastic_Type)) +
+  geom_col() +
+  geom_text(
+    aes(label = paste0(round(pct * 100, 1), "%")), 
+    position = position_stack(vjust = 0.5), 
+    size = 3, 
+    fontface = "bold"
+  ) +
+  scale_fill_brewer(palette = "Set2") + 
+  scale_y_continuous(limits = c(0, 800)) +
+  labs(title = "Plastic Type Distribution by Ocean Region", 
+       x = "Ocean Region",
+       y = "Total Plastic Weight (ton)", 
+       fill = "Plastic Type") +
+  theme_minimal(base_size = 14) + 
+  theme( plot.title = element_text(face = "bold", size = 16, hjust = 0.5), 
+         axis.title = element_text(face = "bold"), 
+         axis.text = element_text(face = "bold"), 
+         legend.position = "right", 
+         panel.background = element_rect(fill = "white", color = NA), 
+         plot.background = element_rect(fill = "white", color = NA), 
+         axis.text.x = element_text(angle = 35, hjust = 1))
+```
+
+While minor differences exist in percentage composition, no substantial disparities emerge between ocean regions. The recorded data suggest a broadly similar distribution of plastic material types across global oceans.
+
+# Insight 3 — Relationship Between Depth, Plastic Weight, and Plastic Type
+
+A visual exploration was conducted to assess potential relationships between depth, plastic weight, and plastic type across ocean regions.
+
+```{r relationship between depth, plastic weight, and plastic type}
+ggplot(data = oceanicpp_df, mapping = aes(x = Depth_meters, y = Plastic_Weight_kg, color = Plastic_Type)) +
+  geom_point(alpha = 0.7, size = 0.5) +
+  facet_wrap(~Region) +
+  scale_color_brewer(palette = "Set2") + 
+  labs( title = "Correlation of Depth, Plastic Weight, and Plastic Type", 
+        x = "Depth (meters)", 
+        y = "Plastic Weight (kg)", color = "Plastic Type" ) +
+  guides(color = guide_legend(override.aes = list(size = 4))) + 
+  theme_minimal(base_size = 14) + 
+  theme( plot.title = element_text(face = "bold", size = 16, hjust = 0.5), 
+         axis.title = element_text(face = "bold"), 
+         axis.text = element_text(face = "bold"),
+         strip.text = element_text(face = "bold", size = 12),
+         legend.title = element_text(face = "bold"), 
+         legend.text = element_text(face = "bold"), 
+         panel.background = element_rect(fill = "white", color = NA), 
+         plot.background = element_rect(fill = "white", color = NA))
+```
+
+The visual inspection of the scatterplots does not indicate a clear systematic relationship between depth and plastic weight. Plastic types are distributed across various depth levels without a distinct concentration pattern.
+
+# Conclusions
+
+This analysis examined the distribution of plastic pollution across global ocean regions using a structured exploratory approach. By combining aggregation techniques and data visualization, the study assessed spatial distribution patterns, material composition, and potential depth-related relationships.
+Overall, the findings suggest that recorded plastic pollution is broadly distributed across ocean regions, with limited variability in both total and average plastic weight. Additionally, plastic material composition appears relatively consistent across regions, and no clear systematic relationship between depth and plastic weight emerges from visual inspection.
+While exploratory in nature, the analysis provides a structured overview of how plastic pollution is represented within the dataset and highlights the importance of multi-dimensional examination when assessing environmental data.
+
+## Key Findings
+
+- Observation counts are relatively balanced across the five ocean regions, supporting meaningful cross-region comparisons.
+
+- Total plastic weight does not exhibit strong disparities between ocean regions, suggesting a broadly distributed presence of recorded plastic waste.
+
+- Mean plastic weight per observation shows limited variability, with only a 6.3 kg difference between the highest and lowest regional averages.
+
+- Plastic type composition appears broadly consistent across oceans, with no single material category dominating a specific region.
+
+- Visual inspection of depth versus plastic weight reveals no clear systematic or linear relationship, and plastic types are distributed across various depth levels without evident clustering patterns.
+
+## Limitations
+
+- The analysis is exploratory and primarily visual; no formal statistical tests (e.g., correlation analysis or regression modeling) were conducted to quantify relationships between variables.
+
+- The dataset reflects recorded observations rather than direct measurements of total oceanic plastic pollution, and therefore may not fully represent real-world accumulation patterns.
+
+- Temporal variables (year, month, day) were not analyzed, limiting insights into trends over time.
+
+- Potential geographic clustering (latitude and longitude patterns) was not explored through spatial mapping techniques.
+
+- The interpretation relies on aggregated values, which may mask localized variability within regions.
+
+## Future Improvements
+
+Future extensions of this analysis could include:
+
+- Conducting statistical correlation tests or regression models to formally assess relationships between depth and plastic weight.
+
+- Incorporating temporal analysis to examine trends and seasonal variations in plastic pollution.
+
+- Developing geospatial visualizations (e.g., mapping latitude and longitude) to identify potential hotspot regions.
+
+- Applying clustering or classification techniques to explore patterns in material composition across regions.
+
+- Comparing findings with external environmental datasets to contextualize pollution levels and ecological impact.
+
+These improvements would enhance analytical depth and provide a more comprehensive understanding of global marine plastic pollution patterns.
