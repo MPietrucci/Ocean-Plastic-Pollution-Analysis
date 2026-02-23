@@ -1,4 +1,4 @@
-# 🌊 Ocean Plastic Pollution Analysis https://mpietrucci.github.io/Ocean-Plastic-Pollution-Analysis/
+# 🌊 Ocean Plastic Pollution Analysis
 
 Exploratory data analysis of global ocean plastic pollution using R, focusing on regional distribution, material composition, and depth-related patterns.
 
